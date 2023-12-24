@@ -95,6 +95,48 @@ void BluesbreakerAudioProcessor::prepareToPlay (double sampleRate, int samplesPe
 {
     // Use this method as the place to do any pre-playback
     // initialisation that you need..
+    
+    juce::dsp::ProcessSpec spec;
+    
+    spec.maximumBlockSize = samplesPerBlock;
+    
+    spec.numChannels = 2;
+    
+    spec.sampleRate = sampleRate;
+    
+    chain.prepare(spec);
+    
+    auto chainSettings = getChainSettings(apvts);
+    
+
+    
+    chain.get<SignalPath::preWaveShaperGain>().setGainDecibels(chainSettings.Gain);
+    
+    chain.get<SignalPath::waveShaper>().functionToUse = [](float x) {
+        // Adjust the gain factor for the desired clipping threshold
+        float gainFactor = 0.7f; // Decrease this value for less gain
+
+        // Simulate diode clipping behavior with two diodes facing one direction
+        float clippedValuePositive = x - gainFactor * std::atan(x);
+
+        // Simulate diode clipping behavior with two diodes facing the other direction
+        float clippedValueNegative = -gainFactor * std::atan(-x);
+
+        // Combine the positive and negative clipping
+        float clippedValue = (x >= 0) ? clippedValuePositive : clippedValueNegative;
+
+        return clippedValue;
+    };
+    
+    //low pass filter tone control chainsettings tone 0-10
+
+
+    // Set up volume
+    chain.get<SignalPath::volume>().setGainLinear(chainSettings.Volume);
+    
+
+ 
+
 }
 
 void BluesbreakerAudioProcessor::releaseResources()
@@ -144,17 +186,48 @@ void BluesbreakerAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
         buffer.clear (i, 0, buffer.getNumSamples());
 
-    // This is the place where you'd normally do the guts of your plugin's
-    // audio processing...
-    // Make sure to reset the state if your inner loop is processing
-    // the samples and the outer loop is handling the channels.
-    // Alternatively, you can process the samples with the channels
-    // interleaved by keeping the same state.
+    //code
+    auto chainSettings = getChainSettings(apvts);
+    
+    
+    
+    
+
+    chain.get<SignalPath::preWaveShaperGain>().setGainDecibels(chainSettings.Gain);
+
+    chain.get<SignalPath::waveShaper>().functionToUse = [](float x) {
+        // Adjust the gain factor for the desired clipping threshold
+        float gainFactor = 0.7f; // Decrease this value for less gain
+
+        // Simulate diode clipping behavior with two diodes facing one direction
+        float clippedValuePositive = x - gainFactor * std::atan(x);
+
+        // Simulate diode clipping behavior with two diodes facing the other direction
+        float clippedValueNegative = -gainFactor * std::atan(-x);
+
+        // Combine the positive and negative clipping
+        float clippedValue = (x >= 0) ? clippedValuePositive : clippedValueNegative;
+
+        return clippedValue;
+    };
+    
+
+    
+    
+    
+    
+    chain.get<SignalPath::volume>().setGainLinear(chainSettings.Volume);
+    
+    
     for (int channel = 0; channel < totalNumInputChannels; ++channel)
     {
-        auto* channelData = buffer.getWritePointer (channel);
+        juce::dsp::AudioBlock<float> block(buffer);
+        auto monoBlock = block.getSingleChannelBlock(channel);
+        juce::dsp::ProcessContextReplacing<float> context(monoBlock);
 
-        // ..do something to the data...
+        
+    
+        chain.process(context);
     }
 }
 
@@ -176,21 +249,52 @@ void BluesbreakerAudioProcessor::getStateInformation (juce::MemoryBlock& destDat
     // You should use this method to store your parameters in the memory block.
     // You could do that either as raw data, or use the XML or ValueTree classes
     // as intermediaries to make it easy to save and load complex data.
+    juce::MemoryOutputStream mos(destData, true);
+    apvts.state.writeToStream(mos);
 }
 
 void BluesbreakerAudioProcessor::setStateInformation (const void* data, int sizeInBytes)
 {
     // You should use this method to restore your parameters from this memory block,
     // whose contents will have been created by the getStateInformation() call.
+    auto tree = juce::ValueTree::readFromData(data, sizeInBytes);
+    if( tree.isValid() )
+    {
+        apvts.replaceState(tree);
+        updateFilters();
+    }
+}
+
+ChainSettings getChainSettings(juce::AudioProcessorValueTreeState& apvts)
+{
+    ChainSettings settings;
+    
+    settings.Gain = apvts.getRawParameterValue("Gain")->load();
+    settings.Tone = apvts.getRawParameterValue("Tone")->load();
+    settings.Volume = apvts.getRawParameterValue("Volume")->load();
+    
+    return settings;
+}
+
+void BluesbreakerAudioProcessor::updateFilters()
+{
+    
+    
+}
+
+void BluesbreakerAudioProcessor::updateParameters()
+{
+    //Volume
+//    chain.get<volume>.setGainDecibels(<#float newGainDecibels#>);
 }
 
 juce::AudioProcessorValueTreeState::ParameterLayout BluesbreakerAudioProcessor::createParameterLayout()
 {
     juce::AudioProcessorValueTreeState::ParameterLayout layout;
     
-    layout.add(std::make_unique<juce::AudioParameterFloat>("Gain", "Gain", juce::NormalisableRange<float>(0.0f, 10.0f, 0.1f), 20.f));
-    layout.add(std::make_unique<juce::AudioParameterFloat>("Tone", "Tone", juce::NormalisableRange<float>(0.0f, 10.0f, 0.1f), 20.f));
-    layout.add(std::make_unique<juce::AudioParameterFloat>("Volume", "Volume", juce::NormalisableRange<float>(0.0f, 10.0f, 0.1f), 20.f));
+    layout.add(std::make_unique<juce::AudioParameterFloat>("Gain", "Gain", juce::NormalisableRange<float>(0.0f, 10.0f, 0.1f), 5.f));
+    layout.add(std::make_unique<juce::AudioParameterFloat>("Tone", "Tone", juce::NormalisableRange<float>(0.0f, 10.0f, 0.1f), 5.f));
+    layout.add(std::make_unique<juce::AudioParameterFloat>("Volume", "Volume", juce::NormalisableRange<float>(0.0f, 10.0f, 0.1f), 5.f));
     
     return layout;
 }

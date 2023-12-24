@@ -10,6 +10,13 @@
 
 #include <JuceHeader.h>
 
+struct ChainSettings
+{
+    float Gain {0}, Tone {0}, Volume {0};
+};
+
+ChainSettings getChainSettings(juce::AudioProcessorValueTreeState& apvts);
+
 //==============================================================================
 /**
 */
@@ -55,8 +62,34 @@ public:
     
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
     juce::AudioProcessorValueTreeState apvts{*this, nullptr, "Parameters", createParameterLayout()};
+    
+    
 
 private:
+    using Biquad = juce::dsp::ProcessorDuplicator<juce::dsp::IIR::Filter<float>, juce::dsp::IIR::Coefficients<float>>;
+    using WaveShaper = juce::dsp::WaveShaper<float>;
+    using Gain = juce::dsp::Gain<float>;
+    using HighPassFilter = juce::dsp::ProcessorDuplicator<juce::dsp::IIR::Filter<float>, juce::dsp::IIR::Coefficients<float>>;
+    using LowPassFilter = juce::dsp::ProcessorDuplicator<juce::dsp::IIR::Filter<float>, juce::dsp::IIR::Coefficients<float>>;
+    using MonoChain = juce::dsp::ProcessorChain<Gain, WaveShaper, Gain>;
+//HighPassFilter, Gain, WaveShaper, LowPassFilter, Gain
+    MonoChain chain;
+    
+    enum SignalPath
+    {
+//        inputHighPass,
+//        //non inverting gain stage
+        preWaveShaperGain,//inverting gain stage
+        waveShaper,
+//        tone,
+//        //posttonehighpass,
+        volume
+    };
+    
+    void updateFilters();
+    
+    void updateParameters();
+    
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (BluesbreakerAudioProcessor)
 };
