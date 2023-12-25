@@ -69,18 +69,20 @@ private:
     using Biquad = juce::dsp::ProcessorDuplicator<juce::dsp::IIR::Filter<float>, juce::dsp::IIR::Coefficients<float>>;
     using WaveShaper = juce::dsp::WaveShaper<float>;
     using Gain = juce::dsp::Gain<float>;
-    using HighPassFilter = juce::dsp::ProcessorDuplicator<juce::dsp::IIR::Filter<float>, juce::dsp::IIR::Coefficients<float>>;
-    using LowPassFilter = juce::dsp::ProcessorDuplicator<juce::dsp::IIR::Filter<float>, juce::dsp::IIR::Coefficients<float>>;
-    using MonoChain = juce::dsp::ProcessorChain<Gain, WaveShaper, Gain>;
+    using HPF = juce::dsp::ProcessorDuplicator<juce::dsp::IIR::Filter<float>, juce::dsp::IIR::Coefficients<float>>;
+    using LPF = juce::dsp::ProcessorDuplicator<juce::dsp::IIR::Filter<float>, juce::dsp::IIR::Coefficients<float>>;
+    using MonoChain = juce::dsp::ProcessorChain<HPF, Gain, WaveShaper, LPF, Gain>;
 //HighPassFilter, Gain, WaveShaper, LowPassFilter, Gain
     MonoChain chain;
     
     enum SignalPath
     {
+        hpf30,
 //        inputHighPass,
 //        //non inverting gain stage
         preWaveShaperGain,//inverting gain stage
         waveShaper,
+        lpf6_3k,
 //        tone,
 //        //posttonehighpass,
         volume

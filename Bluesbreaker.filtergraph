@@ -62,10 +62,10 @@
     </LAYOUT>
   </FILTER>
   <FILTER uid="6" x="0.48625" y="0.4192307692307692" useARA="0" uiLastX_Normal="292"
-          uiLastY_Normal="563" uiopen_Normal="0">
+          uiLastY_Normal="563" uiopen_Normal="1">
     <PLUGIN name="AUAudioFilePlayer" format="AudioUnit" category="Generator"
             manufacturer="Apple" version="1.6.0" file="AudioUnit:Generators/augn,afpl,appl"
-            uniqueId="6163676e" isInstrument="0" fileTime="0" infoUpdateTime="18c9b29229b"
+            uniqueId="6163676e" isInstrument="0" fileTime="0" infoUpdateTime="18ca0b46845"
             numInputs="0" numOutputs="2" isShell="0" hasARAExtension="0"
             uid="6163676e"/>
     <STATE>804.hAGaoMGcv.C1AHv.DTfAGfPBJr.IkXxIpvUag4VclE1XzUmbkIGUjEFcg8EDarVPUAkbkMWYzAUYxMWZyQWYtQ2TzEFcksTY4c0b0IFc4AWYWYWYxMWZu4FUzkGbk8EDOXVZrUVKxUlYkIWYtMVYyQkag0VYRDFbvwFPhxfFR2fCO.AVFkFak4TXsU1URU1Yo8lay8EDA8RUyUlby8hZkIWYsk2KD81X00VYtQ2bunTUCUDHPI2apU1XzM2KTI2avk1XgwFHTgVctQVYxARKfH0RVMjKsA2LgFA0RLAEUXwEXjgWRU1Yo8laD8VYywzauAmVRU1Yo8laDEFcg8EDPjzbSUFakMFckQlTkcVZu4lVRU1Yo8laNEVakgvSP.G...........Ls+C..fA..................fMtQAA...............................D...............................................7++e+O...........HSiAv+++9eInkSkcGHRU1Yo8laS2fCavQGX3URyMUYrU1XzUFYFkFak8EDF8RUyUlby8hZkIWYsk2KD81X00VYtQ2bunTUCUDHPI2apU1XzM2KwDiLvDSKvXyWSQkTsDyWCwTQA4zWS8DSO80TM4RavMSndPsDSPQEV.BFhfvSP.G...........HOWM..fA..................fMtQAA..........RyO9zeJQySMYPOBRiGFoKG.....8AGNH.....................................7++e+O...........Pid.v+++9eInkSkcGHRU1Yo8laIHQXlAGaP.fDgU2YtIMJo7.GVYTZrUFHwXkQowVYfHCVU4FcoQGakQF.H.PF.XB.q.PR.DE.YAfW..G.0Afd.rG.9Avf.vH.TB.1.nM.iCf7.ze.PDvFAvQ.OF.jArY.hFPrAne.7KPABXf.4IfdBTn.FJvhBzn.RJvkB3o.kB.......HP..........rB..................Hfq</STATE>
@@ -77,13 +77,13 @@
     </LAYOUT>
   </FILTER>
   <FILTER uid="7" x="0.48375" y="0.6269230769230769" useARA="0" uiLastX_Normal="325"
-          uiLastY_Normal="155" uiopen_Normal="0">
+          uiLastY_Normal="155" uiopen_Normal="1">
     <PLUGIN name="Bluesbreaker" format="VST3" category="Fx" manufacturer="yourcompany"
             version="1.0.0" file="/Users/jeremy/Library/Audio/Plug-Ins/VST3/Bluesbreaker.vst3"
-            uniqueId="ffa4e02b" isInstrument="0" fileTime="18c9b28e4d8" infoUpdateTime="18c9b29229b"
+            uniqueId="ffa4e02b" isInstrument="0" fileTime="18ca0b44a51" infoUpdateTime="18ca0b46845"
             numInputs="2" numOutputs="2" isShell="0" hasARAExtension="0"
             uid="acfb1997"/>
-    <STATE>191.VMjLgXK....O+fWarAhckI2bo8la8HRLt.iHfTlai8FYo41Y8HRUTYTK3HxO9.BOVMEUy.Ea0cVZtMEcgQWY9vSRC8Vav8lak4Fc9XCLt3hKt3hKt3hKt3hYRUUSTEETIckVwTjQisVTTgkdEYjKAQjYPQSPWgUdMcjKAQjct3hdA4hKt3hKt3hKtnTUv.UQAslXuk0UXoWUFE0YQcEV77RRC8Vav8lak4Fc9vyKVMEUy.Ea0cVZtMEcgQWY9..</STATE>
+    <STATE>362.VMjLgDV....O+fWarAhckI2bo8la8HRLt.iHfTlai8FYo41Y8HRUTYTK3HxO9.BOVMEUy.Ea0cVZtMEcgQWY9vSRC8Vav8lak4Fc9DCN23BTEwlXmAiUYoWUrIVdA4hKAwjKTETRUAUSAAkKBolQY4BQlETQhQEVuQiQtDSQFEFLUYjKAolKA4hKt3hKt3hKT4BQt.UQpQUPvPjKAgDTZoVPP4hQT4RU0QiUY4BVWgkbUcUVtPDTBQjKt3hKt3hKt.UPP4hKUAkTEQ0TtPjYt7VTF4RPlAUPVgiQgACLVkkKXcEVxU0UY4BQPIDQt3hKt3hKt3BTAAkKt3hKt3hKt3hKt3hRUACTEEzZh8VVWgkdUYTTmE0UX4BQP4hPqcjXm0jLh4BQP4xPt.0Qt3hKt3hKt3hKtQUUCUEQTg2ZrM1YQcUVDUjQicVP77RRC8Vav8lak4Fc9vyKVMEUy.Ea0cVZtMEcgQWY9..</STATE>
     <LAYOUT>
       <INPUTS>
         <BUS index="0" layout="L R"/>

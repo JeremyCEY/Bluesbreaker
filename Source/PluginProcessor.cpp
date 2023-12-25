@@ -106,36 +106,10 @@ void BluesbreakerAudioProcessor::prepareToPlay (double sampleRate, int samplesPe
     
     chain.prepare(spec);
     
-    auto chainSettings = getChainSettings(apvts);
-    
+    *chain.get<hpf30>().state = juce::dsp::IIR::ArrayCoefficients<float>::makeFirstOrderHighPass(sampleRate, 30.0f);
+    *chain.get<lpf6_3k>().state = juce::dsp::IIR::ArrayCoefficients<float>::makeFirstOrderLowPass  (sampleRate, 6.3e3f);
 
-    
-    chain.get<SignalPath::preWaveShaperGain>().setGainDecibels(chainSettings.Gain);
-    
-    chain.get<SignalPath::waveShaper>().functionToUse = [](float x) {
-        // Adjust the gain factor for the desired clipping threshold
-        float gainFactor = 0.7f; // Decrease this value for less gain
-
-        // Simulate diode clipping behavior with two diodes facing one direction
-        float clippedValuePositive = x - gainFactor * std::atan(x);
-
-        // Simulate diode clipping behavior with two diodes facing the other direction
-        float clippedValueNegative = -gainFactor * std::atan(-x);
-
-        // Combine the positive and negative clipping
-        float clippedValue = (x >= 0) ? clippedValuePositive : clippedValueNegative;
-
-        return clippedValue;
-    };
-    
-    //low pass filter tone control chainsettings tone 0-10
-
-
-    // Set up volume
-    chain.get<SignalPath::volume>().setGainLinear(chainSettings.Volume);
-    
-
- 
+    updateParameters();
 
 }
 
@@ -186,37 +160,8 @@ void BluesbreakerAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
         buffer.clear (i, 0, buffer.getNumSamples());
 
-    //code
-    auto chainSettings = getChainSettings(apvts);
-    
-    
-    
-    
 
-    chain.get<SignalPath::preWaveShaperGain>().setGainDecibels(chainSettings.Gain);
-
-    chain.get<SignalPath::waveShaper>().functionToUse = [](float x) {
-        // Adjust the gain factor for the desired clipping threshold
-        float gainFactor = 0.7f; // Decrease this value for less gain
-
-        // Simulate diode clipping behavior with two diodes facing one direction
-        float clippedValuePositive = x - gainFactor * std::atan(x);
-
-        // Simulate diode clipping behavior with two diodes facing the other direction
-        float clippedValueNegative = -gainFactor * std::atan(-x);
-
-        // Combine the positive and negative clipping
-        float clippedValue = (x >= 0) ? clippedValuePositive : clippedValueNegative;
-
-        return clippedValue;
-    };
-    
-
-    
-    
-    
-    
-    chain.get<SignalPath::volume>().setGainLinear(chainSettings.Volume);
+    updateParameters();
     
     
     for (int channel = 0; channel < totalNumInputChannels; ++channel)
@@ -224,9 +169,6 @@ void BluesbreakerAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
         juce::dsp::AudioBlock<float> block(buffer);
         auto monoBlock = block.getSingleChannelBlock(channel);
         juce::dsp::ProcessContextReplacing<float> context(monoBlock);
-
-        
-    
         chain.process(context);
     }
 }
@@ -276,6 +218,7 @@ ChainSettings getChainSettings(juce::AudioProcessorValueTreeState& apvts)
     return settings;
 }
 
+
 void BluesbreakerAudioProcessor::updateFilters()
 {
     
@@ -284,8 +227,41 @@ void BluesbreakerAudioProcessor::updateFilters()
 
 void BluesbreakerAudioProcessor::updateParameters()
 {
-    //Volume
-//    chain.get<volume>.setGainDecibels(<#float newGainDecibels#>);
+    auto chainSettings = getChainSettings(apvts);
+
+    
+    chain.get<preWaveShaperGain>().setGainDecibels(chainSettings.Gain);
+
+    chain.get<waveShaper>().functionToUse = [](float x) {
+        // Adjust the gain factor for the desired clipping threshold
+        float gainFactor = 0.7f; // Decrease this value for less gain
+
+        // Simulate diode clipping behavior with two diodes facing one direction
+        float clippedValuePositive = x - gainFactor * std::atan(x);
+
+        // Simulate diode clipping behavior with two diodes facing the other direction
+        float clippedValueNegative = -gainFactor * std::atan(-x);
+
+        // Combine the positive and negative clipping
+        float clippedValue = (x >= 0) ? clippedValuePositive : clippedValueNegative;
+
+        return clippedValue;
+    };
+    
+    // Apply tone control
+//    float normalizedToneKnob = chainSettings.Tone / 10.0f; // Normalize to [0, 1]
+//    float minCutoff = 100.0f; // Set your desired minimum cutoff frequency
+//    float maxCutoff = 10000.0f; // Set your desired maximum cutoff frequency
+//
+//    float cutoffFrequency = minCutoff + normalizedToneKnob * (maxCutoff - minCutoff);
+//
+//    chain.get<SignalPath::tone>().state = juce::dsp::IIR::Coefficients<float>::makeLowPass(getSampleRate(), cutoffFrequency);
+//    chain.get<SignalPath::tone>().process(dsp::ProcessContextReplacing<float>(block));
+//
+//
+//
+//
+    chain.get<volume>().setGainLinear(chainSettings.Volume);
 }
 
 juce::AudioProcessorValueTreeState::ParameterLayout BluesbreakerAudioProcessor::createParameterLayout()
