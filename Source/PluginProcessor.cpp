@@ -106,8 +106,8 @@ void BluesbreakerAudioProcessor::prepareToPlay (double sampleRate, int samplesPe
     
     chain.prepare(spec);
     
-    *chain.get<hpf30>().state = juce::dsp::IIR::ArrayCoefficients<float>::makeFirstOrderHighPass(sampleRate, 30.0f);
-    *chain.get<lpf6_3k>().state = juce::dsp::IIR::ArrayCoefficients<float>::makeFirstOrderLowPass  (sampleRate, 6.3e3f);
+//    *chain.get<hpf30>().state = juce::dsp::IIR::ArrayCoefficients<float>::makeFirstOrderHighPass(sampleRate, 30.0f);
+//    *chain.get<lpf6_3k>().state = juce::dsp::IIR::ArrayCoefficients<float>::makeFirstOrderLowPass  (sampleRate, 6.3e3f);
 
     updateParameters();
 
@@ -159,7 +159,11 @@ void BluesbreakerAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     // this code if your algorithm always overwrites all the output channels.
     for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
         buffer.clear (i, 0, buffer.getNumSamples());
-
+    
+    if (apvts.getRawParameterValue("Bypass")->load() == 1.0f)
+    {
+        return;
+    }
 
     updateParameters();
     
@@ -229,12 +233,48 @@ void BluesbreakerAudioProcessor::updateParameters()
 {
     auto chainSettings = getChainSettings(apvts);
 
-    
-    chain.get<preWaveShaperGain>().setGainDecibels(chainSettings.Gain);
+    //first gain stage non inverting
+    float R1 = 3300.0f;
+    float R2 = 4700.0f;
+    float normalizedGainKnob = chainSettings.Gain / 10.0f; // Normalize to [0, 1]
+    float minGain = 0.0f;
+    float maxGain = 100000.0f;
 
-    chain.get<waveShaper>().functionToUse = [](float x) {
+    float Rgain = minGain + normalizedGainKnob * (maxGain - minGain);
+    
+    float gainValue = 1 + (R1 + Rgain) / R2;
+    
+    chain.get<firstgainstage>().setGainLinear(gainValue);
+    
+    
+    float capacitance1 = 47e-12f; // 47 pF in farads
+            float capacitance2 = 10e-9f;  // 10 nF in farads
+            float capacitance3 = 10e-9f;  // 10 nF in farads
+            float resistance1 = 3.3e3f;   // 3.3k ohms
+            float resistance2 = 4.7e3f;   // 4.7k ohms
+
+            // Calculate the total capacitance in parallel
+            float totalCapacitance = capacitance1 + (capacitance2 * capacitance3) / (capacitance2 + capacitance3);
+
+            // Calculate the equivalent resistance
+            float equivalentResistance = resistance1 + resistance2;
+
+            // Calculate the cutoff frequency
+            float cutoff = 1.0f / (2.0f * juce::MathConstants<float>::pi * equivalentResistance * totalCapacitance);
+    
+    //Post First Stage Low Pass
+    *chain.get<postfirststagelowpass>().state = juce::dsp::IIR::ArrayCoefficients<float>::makeLowPass(getSampleRate(), cutoff);
+
+    
+    
+    //Second Gain Stage Inverting
+    chain.get<secondgainstage>().setGainLinear(-220000.0 / (220000.0 + 6800.0));
+
+    
+    //Soft Clipping with diodes
+    chain.get<softClip>().functionToUse = [](float x) {
         // Adjust the gain factor for the desired clipping threshold
-        float gainFactor = 0.7f; // Decrease this value for less gain
+        float gainFactor = 0.1f; // Decrease this value for less gain
 
         // Simulate diode clipping behavior with two diodes facing one direction
         float clippedValuePositive = x - gainFactor * std::atan(x);
@@ -248,20 +288,32 @@ void BluesbreakerAudioProcessor::updateParameters()
         return clippedValue;
     };
     
-    // Apply tone control
-//    float normalizedToneKnob = chainSettings.Tone / 10.0f; // Normalize to [0, 1]
-//    float minCutoff = 100.0f; // Set your desired minimum cutoff frequency
-//    float maxCutoff = 10000.0f; // Set your desired maximum cutoff frequency
-//
-//    float cutoffFrequency = minCutoff + normalizedToneKnob * (maxCutoff - minCutoff);
-//
-//    chain.get<SignalPath::tone>().state = juce::dsp::IIR::Coefficients<float>::makeLowPass(getSampleRate(), cutoffFrequency);
-//    chain.get<SignalPath::tone>().process(dsp::ProcessContextReplacing<float>(block));
-//
-//
-//
-//
-    chain.get<volume>().setGainLinear(chainSettings.Volume);
+    
+    
+    //Tone control
+    float normalizedToneKnob = chainSettings.Tone / 10.0f; // Normalize to [0, 1]
+    float minCutoff = 612.0f; // Set your desired minimum cutoff frequency
+    float maxCutoff = 15915.0f; // Set your desired maximum cutoff frequency
+
+    float cutoffFrequency = minCutoff + normalizedToneKnob * (maxCutoff - minCutoff);
+
+    *chain.get<tone>().state = juce::dsp::IIR::ArrayCoefficients<float>::makeLowPass(getSampleRate(), cutoffFrequency);
+
+    
+    //Post Tone Control Low Pass
+    *chain.get<postToneLowPass>().state = juce::dsp::IIR::ArrayCoefficients<float>::makeLowPass(getSampleRate(), 2340.0f);
+
+    
+    //Volume Control
+
+    float volumeKnob = chainSettings.Volume;
+
+    float min = 0.0f;
+    float max = 1.0f;
+    
+    float Volume = min + volumeKnob * (max - min);
+    
+    chain.get<volume>().setGainLinear(Volume);
 }
 
 juce::AudioProcessorValueTreeState::ParameterLayout BluesbreakerAudioProcessor::createParameterLayout()
@@ -271,6 +323,9 @@ juce::AudioProcessorValueTreeState::ParameterLayout BluesbreakerAudioProcessor::
     layout.add(std::make_unique<juce::AudioParameterFloat>("Gain", "Gain", juce::NormalisableRange<float>(0.0f, 10.0f, 0.1f), 5.f));
     layout.add(std::make_unique<juce::AudioParameterFloat>("Tone", "Tone", juce::NormalisableRange<float>(0.0f, 10.0f, 0.1f), 5.f));
     layout.add(std::make_unique<juce::AudioParameterFloat>("Volume", "Volume", juce::NormalisableRange<float>(0.0f, 10.0f, 0.1f), 5.f));
+    
+    layout.add(std::make_unique<juce::AudioParameterBool>("Bypass", "Bypass", false));
+
     
     return layout;
 }
