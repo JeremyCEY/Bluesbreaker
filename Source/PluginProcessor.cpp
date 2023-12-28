@@ -278,7 +278,6 @@ void BluesbreakerAudioProcessor::updateParameters()
 {
     auto chainSettings = getChainSettings(apvts);
 
-    
     //normalised knobs
     float normalizedGainKnob = chainSettings.Gain / 10.0f; // Normalize to [0, 1]
     
@@ -286,47 +285,19 @@ void BluesbreakerAudioProcessor::updateParameters()
     float driveSquared = normalizedGainKnob * normalizedGainKnob;
     
     *chain.get<biquadPreDriveBoost>().state = juce::dsp::IIR::ArrayCoefficients<float>::makePeakFilter (getSampleRate(), (-1400.0f * driveSquared + 500.0f * normalizedGainKnob + 1600.0f), (-0.1f * normalizedGainKnob + 0.15f), juce::Decibels::decibelsToGain (10 * normalizedGainKnob + 5));
-//
+
     //Biquad Predrive Notch
     *chain.get<biquadPreDriveNotch>().state = juce::dsp::IIR::ArrayCoefficients<float>::makePeakFilter (getSampleRate(), (8e3f), (0.8f), juce::Decibels::decibelsToGain (-5.0f * driveSquared));
-    
     
     float minGain = 0.0f;
     float maxGain = 100000.0f;
 
-
-    
-    
-    
-    //First Gain Stage Non-inverting
-    //***need to scale down
-//    float R1 = 3300.0f;
-//    float R2 = 4700.0f;
-    
-//    float Rin = 1.0f/(1.0f/R1 + 1.0f/R2);
-//    float minGain = 0.0f;
-//    float maxGain = 100000.0f;
-
-    float Rgain = minGain + normalizedGainKnob * (maxGain - minGain);
-    
-//    float gainValue = 1.0f + Rgain / Rin;
     
     float gainValue = 1.0f + chainSettings.Gain/10;
     
     chain.get<firstgainstage>().setGainLinear(gainValue);
-
     
     chain.get<postgain>().setGainLinear(0.1f);
-
-    
-    //Second Gain Stage Inverting cannot take negative values
-    float Rinput = 10000.0f;
-    float Rfeedback = 1/(1/220000.0f + 1/6800.0f);
-    float Rgain2 = Rfeedback/Rinput;
-    
-    //figure out proper gain value but hsould be correct
-//    chain.get<secondgainstage>().setGainLinear(1.0f);
-
     
     //Tone control
     float normalizedToneKnob = chainSettings.Tone / 10.0f; // Normalize to [0, 1]
@@ -336,9 +307,6 @@ void BluesbreakerAudioProcessor::updateParameters()
     float cutoffFrequency = minCutoff + normalizedToneKnob * (maxCutoff - minCutoff);
 
     *chain.get<tone>().state = juce::dsp::IIR::ArrayCoefficients<float>::makeLowPass(getSampleRate(), cutoffFrequency);
-
-    
-
     
     //Volume Control
 
