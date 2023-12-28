@@ -106,9 +106,46 @@ void BluesbreakerAudioProcessor::prepareToPlay (double sampleRate, int samplesPe
     
     chain.prepare(spec);
     
-//    *chain.get<hpf30>().state = juce::dsp::IIR::ArrayCoefficients<float>::makeFirstOrderHighPass(sampleRate, 30.0f);
+    *chain.get<hpf30>().state = juce::dsp::IIR::ArrayCoefficients<float>::makeFirstOrderHighPass(sampleRate, 30.0f);
 //    *chain.get<lpf6_3k>().state = juce::dsp::IIR::ArrayCoefficients<float>::makeFirstOrderLowPass  (sampleRate, 6.3e3f);
-
+    
+    //Anti Aliasing Filter
+    *chain.get<aaf>().state = juce::dsp::IIR::ArrayCoefficients<float>::makeLowPass(getSampleRate(), getSampleRate()/2 - 1000.0f);
+    
+    
+    //Soft Clipping
+    chain.get<softClip>().functionToUse = [](float x) {
+        //x>0
+        if(x>=0.0f && x<= 0.33f)
+            return 2.0f*x;
+        else if(x>=0.33f && x<=0.66f){
+            return (3.0f-(2.0f-3.0f*x)*(2.0f-3.0f*x))/3.0f;
+        }
+        else if(x>=0.66f && x<= 1.0f){
+            return 1.0f;
+        }
+        else if(x>=1.0f){
+            return 1.0f;
+        }
+        
+        //x<0
+        else if(x<=0.0f && x>= -0.33f)
+            return 2.0f*x;
+        else if(x<=0.33f && x>=-0.66f){
+            return -(3.0f-(2.0f+3.0f*x)*(2.0f+3.0f*x))/3.0f;
+        }
+            
+        else if(x<=0.66f && x>= -1.0f){
+            return -1.0f;
+        }
+        
+        else if(x<=-1.0f){
+            return -1.0f;
+        }
+        
+        else return 0.0f;
+    };
+    
     updateParameters();
 
 }
@@ -164,17 +201,25 @@ void BluesbreakerAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     {
         return;
     }
+    
+
 
     updateParameters();
     
     
-    for (int channel = 0; channel < totalNumInputChannels; ++channel)
-    {
+//    for (int channel = 0; channel < totalNumInputChannels; ++channel)
+//    {
+//        juce::dsp::AudioBlock<float> block(buffer);
+//        auto monoBlock = block.getSingleChannelBlock(channel);
+//        juce::dsp::ProcessContextReplacing<float> context(monoBlock);
+//        chain.process(context);
+//    }
+    
         juce::dsp::AudioBlock<float> block(buffer);
-        auto monoBlock = block.getSingleChannelBlock(channel);
-        juce::dsp::ProcessContextReplacing<float> context(monoBlock);
+
+        juce::dsp::ProcessContextReplacing<float> context(block);
         chain.process(context);
-    }
+
 }
 
 //==============================================================================
@@ -233,75 +278,66 @@ void BluesbreakerAudioProcessor::updateParameters()
 {
     auto chainSettings = getChainSettings(apvts);
 
-    //first gain stage non inverting
-    float R1 = 3300.0f;
-    float R2 = 4700.0f;
+    
+    //normalised knobs
     float normalizedGainKnob = chainSettings.Gain / 10.0f; // Normalize to [0, 1]
+    
+    //Biquad Predrive Boost
+    float driveSquared = normalizedGainKnob * normalizedGainKnob;
+    
+    *chain.get<biquadPreDriveBoost>().state = juce::dsp::IIR::ArrayCoefficients<float>::makePeakFilter (getSampleRate(), (-1400.0f * driveSquared + 500.0f * normalizedGainKnob + 1600.0f), (-0.1f * normalizedGainKnob + 0.15f), juce::Decibels::decibelsToGain (10 * normalizedGainKnob + 5));
+//
+    //Biquad Predrive Notch
+    *chain.get<biquadPreDriveNotch>().state = juce::dsp::IIR::ArrayCoefficients<float>::makePeakFilter (getSampleRate(), (8e3f), (0.8f), juce::Decibels::decibelsToGain (-5.0f * driveSquared));
+    
+    
     float minGain = 0.0f;
     float maxGain = 100000.0f;
 
+
+    
+    
+    
+    //First Gain Stage Non-inverting
+    //***need to scale down
+//    float R1 = 3300.0f;
+//    float R2 = 4700.0f;
+    
+//    float Rin = 1.0f/(1.0f/R1 + 1.0f/R2);
+//    float minGain = 0.0f;
+//    float maxGain = 100000.0f;
+
     float Rgain = minGain + normalizedGainKnob * (maxGain - minGain);
     
-    float gainValue = 1 + (R1 + Rgain) / R2;
+//    float gainValue = 1.0f + Rgain / Rin;
+    
+    float gainValue = 1.0f + chainSettings.Gain/10;
     
     chain.get<firstgainstage>().setGainLinear(gainValue);
-    
-    
-    float capacitance1 = 47e-12f; // 47 pF in farads
-            float capacitance2 = 10e-9f;  // 10 nF in farads
-            float capacitance3 = 10e-9f;  // 10 nF in farads
-            float resistance1 = 3.3e3f;   // 3.3k ohms
-            float resistance2 = 4.7e3f;   // 4.7k ohms
-
-            // Calculate the total capacitance in parallel
-            float totalCapacitance = capacitance1 + (capacitance2 * capacitance3) / (capacitance2 + capacitance3);
-
-            // Calculate the equivalent resistance
-            float equivalentResistance = resistance1 + resistance2;
-
-            // Calculate the cutoff frequency
-            float cutoff = 1.0f / (2.0f * juce::MathConstants<float>::pi * equivalentResistance * totalCapacitance);
-    
-    //Post First Stage Low Pass
-    *chain.get<postfirststagelowpass>().state = juce::dsp::IIR::ArrayCoefficients<float>::makeLowPass(getSampleRate(), cutoff);
 
     
-    
-    //Second Gain Stage Inverting
-    chain.get<secondgainstage>().setGainLinear(-220000.0 / (220000.0 + 6800.0));
+    chain.get<postgain>().setGainLinear(0.1f);
 
     
-    //Soft Clipping with diodes
-    chain.get<softClip>().functionToUse = [](float x) {
-        // Adjust the gain factor for the desired clipping threshold
-        float gainFactor = 0.1f; // Decrease this value for less gain
-
-        // Simulate diode clipping behavior with two diodes facing one direction
-        float clippedValuePositive = x - gainFactor * std::atan(x);
-
-        // Simulate diode clipping behavior with two diodes facing the other direction
-        float clippedValueNegative = -gainFactor * std::atan(-x);
-
-        // Combine the positive and negative clipping
-        float clippedValue = (x >= 0) ? clippedValuePositive : clippedValueNegative;
-
-        return clippedValue;
-    };
+    //Second Gain Stage Inverting cannot take negative values
+    float Rinput = 10000.0f;
+    float Rfeedback = 1/(1/220000.0f + 1/6800.0f);
+    float Rgain2 = Rfeedback/Rinput;
     
-    
+    //figure out proper gain value but hsould be correct
+//    chain.get<secondgainstage>().setGainLinear(1.0f);
+
     
     //Tone control
     float normalizedToneKnob = chainSettings.Tone / 10.0f; // Normalize to [0, 1]
-    float minCutoff = 612.0f; // Set your desired minimum cutoff frequency
-    float maxCutoff = 15915.0f; // Set your desired maximum cutoff frequency
+    float minCutoff = 2000.0f; // Set your desired minimum cutoff frequency
+    float maxCutoff = 10000.0f; // Set your desired maximum cutoff frequency
 
     float cutoffFrequency = minCutoff + normalizedToneKnob * (maxCutoff - minCutoff);
 
     *chain.get<tone>().state = juce::dsp::IIR::ArrayCoefficients<float>::makeLowPass(getSampleRate(), cutoffFrequency);
 
     
-    //Post Tone Control Low Pass
-    *chain.get<postToneLowPass>().state = juce::dsp::IIR::ArrayCoefficients<float>::makeLowPass(getSampleRate(), 2340.0f);
 
     
     //Volume Control
